@@ -42,18 +42,24 @@ class PyNeuro:
     __packetsReceived = 0
     __telnet = None
 
-    __attention_callbacks = []
-    __meditation_callbacks = []
+    __attention__callbacks = []
+    __meditation__callbacks = []
     __blinkStrength__callbacks = []
+
     __delta__callbacks = []
     __theta__callbacks = []
-    __status__callbacks = []
     __lowAlpha__callbacks = []
     __highAlpha__callbacks = []
     __lowBeta__callbacks = []
     __highBeta__callbacks = []
     __lowGamma__callbacks = []
     __highGamma__callbacks = []
+
+    '''Changing status callbacks'''
+    __connect__callbacks = []
+    __disconnect__callbacks = []
+    #TODO? scanning
+    #TODO? fitting
 
     callBacksDictionary = {}  # keep a track of all callbacks
 
@@ -65,12 +71,15 @@ class PyNeuro:
     def connect(self):
         """
         Connect the TCP socket via Telnet.
-
         """
-        if self.__telnet is None:
-            self.__telnet = Telnet('localhost', 13854)
-            self.__telnet.write(b'{"enableRawOutput": true, "format": "Json"}');
-            print("[PyNeuro] Connecting TCP Socket Host...")
+        try:
+            if self.__telnet is None:
+                self.__telnet = Telnet('localhost', 13854)
+                self.__telnet.write(b'{"enableRawOutput": true, "format": "Json"}');
+                print("[PyNeuro] Connecting TCP Socket Host...")
+        except ConnectionRefusedError as cre:
+            print("[PyNeuro]", cre.strerror)
+            print("[PyNeuro]", "Perhaps the ThinkGear Connect (TGC) is not running")
 
     def disconnect(self):
         """
@@ -79,6 +88,9 @@ class PyNeuro:
         if self.__telnet is not None:
             self.__telnet.close()
             print("[PyNeuro] Disconnect TCP Socket.")
+
+        for callback in self.__disconnect__callbacks:
+            callback()
 
     def start(self):
         """
@@ -115,7 +127,7 @@ class PyNeuro:
                                     print("[PyNeuro] Connection lost, trying to reconnect..")
                         else:
                             if "eSense" in data.keys():
-                                print(data["eegPower"])
+                                #print(data["eegPower"])
                                 if data["eSense"]["attention"] + data["eSense"]["meditation"] == 0:
                                     if self.__status != "fitting":
                                         self.__status = "fitting"
@@ -124,6 +136,8 @@ class PyNeuro:
                                 else:
                                     if self.__status != "connected":
                                         self.__status = "connected"
+                                        for callback in self.__connect__callbacks:
+                                            callback()
                                         print("[PyNeuro] Successfully Connected ..")
                                     self.attention = data["eSense"]["attention"]
                                     self.meditation = data["eSense"]["meditation"]
@@ -141,9 +155,17 @@ class PyNeuro:
                                 self.blinkStrength = data["blinkStrength"]
                                 self.__blinkStrength_records.append(data["blinkStrength"])
                     except:
-                        print()
+                        print("[PyNeuro] error")
         except:
             print("[PyNeuro] Stop Packet Parser")
+
+    def set_connect_callback(self, callback):
+        """
+        Set callback function on connect
+        :param callback: function()
+        """
+
+        self.__connect__callbacks.append(callback)
 
     def set_attention_callback(self, callback):
         """
@@ -151,7 +173,7 @@ class PyNeuro:
         :param callback: function(attention: int)
         """
 
-        self.__attention_callbacks.append(callback)
+        self.__attention__callbacks.append(callback)
 
     def set_meditation_callback(self, callback):
         """
@@ -159,7 +181,7 @@ class PyNeuro:
         :param callback: function(meditation: int)
         """
 
-        self.__meditation_callbacks.append(callback)
+        self.__meditation__callbacks.append(callback)
 
     def set_blinkStrength_callback(self, callback):
         """
@@ -212,8 +234,8 @@ class PyNeuro:
     def attention(self, value):
         self.__attention = value
         # if callback has been set, execute the function
-        if len(self.__attention_callbacks) != 0:
-            for callback in self.__attention_callbacks:
+        if len(self.__attention__callbacks) != 0:
+            for callback in self.__attention__callbacks:
                 callback(self.__attention)
 
     # meditation
@@ -226,8 +248,8 @@ class PyNeuro:
     def meditation(self, value):
         self.__meditation = value
         # if callback has been set, execute the function
-        if len(self.__meditation_callbacks) != 0:
-            for callback in self.__meditation_callbacks:
+        if len(self.__meditation__callbacks) != 0:
+            for callback in self.__meditation__callbacks:
                 callback(self.__meditation)
 
     # blinkStrength
@@ -351,9 +373,3 @@ class PyNeuro:
     def status(self):
         """Get status"""
         return self.__status
-
-    @status.setter
-    def status(self, value):
-        self.__status = value
-        for callback in self.__status__callbacks:
-            callback(self.__status)
