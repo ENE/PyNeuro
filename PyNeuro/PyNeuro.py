@@ -201,7 +201,7 @@ class PyNeuro:
                                     self.lowGamma = data['eegPower']['lowGamma']
                                     self.highGamma = data['eegPower']['highGamma']
                                     self.__attention_records.append(data["eSense"]["attention"])
-                                    self.__attention_records.append(data["eSense"]["meditation"])
+                                    self.__meditation_records.append(data["eSense"]["meditation"])
                             elif "blinkStrength" in data.keys():
                                 self.blinkStrength = data["blinkStrength"]
                                 self.__blinkStrength_records.append(data["blinkStrength"])
