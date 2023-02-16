@@ -170,6 +170,7 @@ class PyNeuro:
                         raw_str = (str(line).rstrip("\\r'").lstrip("b'"))
                         data = json.loads(raw_str)
                         if "status" in data.keys():
+                            #print("[PyNeuro] status:", data["status"])
                             if self.__status != data["status"]:
                                 self.__status = data["status"]
                                 if data["status"] == "scanning":
@@ -178,6 +179,7 @@ class PyNeuro:
                                     print("[PyNeuro] Connection lost, trying to reconnect..")
                         else:
                             if "eSense" in data.keys():
+                                #print("[PyNeuro] poorSignalLevel [0-200]:", data["poorSignalLevel"])
                                 #print(data["eegPower"])
                                 if data["eSense"]["attention"] + data["eSense"]["meditation"] == 0:
                                     if self.__status != "fitting":
@@ -185,6 +187,11 @@ class PyNeuro:
                                         print("[PyNeuro] Fitting Device..")
 
                                 else:
+                                    #att = data["eSense"]["attention"]
+                                    #med = data["eSense"]["meditation"]
+                                    #plevel = data["poorSignalLevel"]
+                                    #print("Att: %3d   pLevel: %3d   Med: %3d" % (att, plevel, med))
+
                                     if self.__status != "connected":
                                         self.__status = "connected"
                                         for callback in self.__connect__callbacks:
