@@ -79,7 +79,7 @@ Observou-se que:
  Resumindo, para os cinco ícones da Neurosky, podemos ter:
 ```basic
  connected
-   if poorSignalLevel > 150
+   if poorSignalLevel < 50
    and attention + meditation != 0
 
  fitting1
@@ -87,11 +87,11 @@ Observou-se que:
 
  fitting2
    if attention + meditation == 0
-   or poorSignalLevel < 100
+   or poorSignalLevel > 100
 
  fitting3
-   if poorSignalLevel >= 100 
-   and poorSignalLevel <= 150 
+   if poorSignalLevel <= 100 
+   and poorSignalLevel >= 50 
 
  nosignal
    if status and status != "scanning"
