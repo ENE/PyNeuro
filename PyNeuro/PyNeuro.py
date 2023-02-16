@@ -6,20 +6,71 @@
 import json
 from telnetlib import Telnet
 from threading import Thread
+from collections import namedtuple
+from collections import OrderedDict
 
+# Define a namedtuple
+Status = namedtuple("Status", ["description", "icon"])
+
+class MWM2_Status(Status):
+    CONNECTED = "connected"
+    FITTING1  = "st_fitting1"
+    FITTING2  = "st_fitting2"
+    FITTING3  = "st_fitting3"
+    NOSIGNAL  = "nosignal"
 
 class PyNeuro:
-    """NeuroPy libraby, to get data from neurosky mindwave.
-    Initialising: object1=PyNeuro() #windows
-    After initialising , if required the callbacks must be set
-    then using the start method the library will start fetching data from mindwave
-    i.e. object1.start()
-    similarly close method can be called to stop fetching the data
-    i.e. object1.close()
+    """
+    This is a NeuroPy-like library, to get data from the Mindwave Mobile 2,
+    a EEG device manufactured by Neurosky.
 
-    requirements:Telnet
+    Initialising:
+
+        object1 = PyNeuro()
+
+    After initialising , if required the callbacks must be set. Then using
+    the start() method the library will start fetching data from headset:
+    
+        object1.start()
+    
+    Similarly, the close() method can be called to stop fetching data:
+    
+        object1.close()
+
+    Requirements:
+    
+      - Telnet
+      - ThinkGear Connector
 
     """
+
+    status_def = OrderedDict()
+    status_def[MWM2_Status.CONNECTED] = MWM2_Status("Conectado! Sinal de qualidade ótima","icons/connected_v1.png")
+    status_def [MWM2_Status.FITTING1] = MWM2_Status("Sintonizando headset... (fase 1 de 3)","icons/connecting1_v1.png")
+    status_def [MWM2_Status.FITTING2] = MWM2_Status("Sintonizando headset... (fase 2 de 3)","icons/connecting2_v1.png")
+    status_def [MWM2_Status.FITTING3] = MWM2_Status("Sintonizando headset... (fase 3 de 3)","icons/connecting3_v1.png")
+    status_def [MWM2_Status.NOSIGNAL] = MWM2_Status("Desconectado, sem qualquer sinal","icons/nosignal_v1.png")
+
+    '''TODO translation support
+    [PyNeuro] Connecting TCP Socket Host...
+    [PyNeuro] Scanning device..
+    [PyNeuro] Fitting Device..
+    [PyNeuro] Successfully Connected ..
+    [PyNeuro] Connection lost, trying to reconnect..
+    '''
+
+    status_def_at = list(status_def.values())
+
+    '''
+    To get object a Status containing utility strings:
+
+        print(PyNeuro.status[MWM2_Status.FITTING1])  # or
+
+    Or by an ordered index:
+
+        print(PyNeuro.status_at[1])  # 0-4 (the 5 values)
+
+    '''
 
     __attention = 0
     __meditation = 0
