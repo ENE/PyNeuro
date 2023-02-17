@@ -10,7 +10,7 @@ from collections import namedtuple
 from collections import OrderedDict
 
 # Define a namedtuple
-Status = namedtuple("Status", ["description", "icon"])
+Status = namedtuple("Status", ["index","description","icon"])
 
 class MWM2_Status(Status):
     CONNECTED = "connected"
@@ -45,11 +45,11 @@ class PyNeuro:
     """
 
     status_def = OrderedDict()
-    status_def[MWM2_Status.CONNECTED] = MWM2_Status("Conectado! Sinal de qualidade ótima","icons/connected_v1.png")
-    status_def [MWM2_Status.FITTING1] = MWM2_Status("Buscando o headset... (fase 1 de 3)","icons/connecting1_v1.png")
-    status_def [MWM2_Status.FITTING2] = MWM2_Status("Aguardando dados de EEG... (fase 2 de 3)","icons/connecting2_v1.png")
-    status_def [MWM2_Status.FITTING3] = MWM2_Status("Conexão ainda deve melhorar (fase 3 de 3)","icons/connecting3_v1.png")
-    status_def [MWM2_Status.NOSIGNAL] = MWM2_Status("Desconectado, sem qualquer sinal","icons/nosignal_v1.png")
+    status_def[MWM2_Status.CONNECTED] = MWM2_Status(0,"Conectado! Sinal de qualidade ótima","icons/connected_v1.png")
+    status_def [MWM2_Status.FITTING1] = MWM2_Status(1,"Procurando headset... (fase 1 de 3)","icons/connecting1_v1.png")
+    status_def [MWM2_Status.FITTING2] = MWM2_Status(2,"Na espera de dados EEG (fase 2 de 3)","icons/connecting2_v1.png")
+    status_def [MWM2_Status.FITTING3] = MWM2_Status(3,"Conexão deve melhorar (fase 3 de 3)","icons/connecting3_v1.png")
+    status_def [MWM2_Status.NOSIGNAL] = MWM2_Status(4,"Desconectado, sem qualquer sinal","icons/nosignal_v1.png")
 
     '''TODO translation support
     [PyNeuro] Connecting TCP Socket Host...
@@ -91,6 +91,12 @@ class PyNeuro:
     '''
 
     status_def_at = list(status_def.values())
+
+    '''candidate to be deprecated''' # unused
+    @classmethod # very inefficient
+    def position_status(cls, key): 
+        tuples = list(cls.status_def.items())
+        return tuples.index((key, cls.status[key]))
 
     '''
     To get object a Status containing utility strings:
@@ -263,6 +269,14 @@ class PyNeuro:
         if status not in self.status_def.keys():
             raise ValueError("this is not one of the high level statuses")
         self.__status_callbacks[status].append(callback)
+
+    '''set a callback function for any status change'''
+    def set_status_callback(self, callback):
+        self.set_highlevel_status_callback(MWM2_Status.CONNECTED, callback)
+        self.set_highlevel_status_callback(MWM2_Status.FITTING1, callback)
+        self.set_highlevel_status_callback(MWM2_Status.FITTING2, callback)
+        self.set_highlevel_status_callback(MWM2_Status.FITTING3, callback)
+        self.set_highlevel_status_callback(MWM2_Status.NOSIGNAL, callback)
 
     def set_attention_callback(self, callback):
         """
