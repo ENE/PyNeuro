@@ -1,8 +1,9 @@
-Nesse arquivo de texto faz-se uma depuração dos "status" básicos existentes
-durante uma utilização do headset, frente a usuário final, não ao parser.
+Temos uma depuração dos "status" básicos existentes durante uma utilização do headset; frente a usuário final, não ao _parser_.
 
 ```console
-$ python status-test.py 
+$ python status-prints.py
+```
+```ini
 [PyNeuro] Connecting TCP Socket Host...
 [PyNeuro] error
 [PyNeuro] status: scanning
@@ -24,7 +25,7 @@ $ python status-test.py
 [PyNeuro] poorSignalLevel [0-200]: 0
 ```
 Passado um tempo, eventualmente:
-```console
+```ini
 [PyNeuro] poorSignalLevel [0-200]: 0
 [PyNeuro] poorSignalLevel [0-200]: 0
 [PyNeuro] poorSignalLevel [0-200]: 25
@@ -32,7 +33,7 @@ Passado um tempo, eventualmente:
 [PyNeuro] poorSignalLevel [0-200]: 0
 ```
 Experimentando mexer no eletrodo:
-```console
+```ini
 [PyNeuro] poorSignalLevel [0-200]: 0
 [PyNeuro] poorSignalLevel [0-200]: 0
 [PyNeuro] poorSignalLevel [0-200]: 51
@@ -45,7 +46,7 @@ Experimentando mexer no eletrodo:
 [PyNeuro] poorSignalLevel [0-200]: 25
 ```
 Ou experimentando retirar o eletrodo: 
-```console
+```ini
 [PyNeuro] poorSignalLevel [0-200]: 51
 [PyNeuro] poorSignalLevel [0-200]: 55
 [PyNeuro] poorSignalLevel [0-200]: 55
@@ -61,13 +62,13 @@ Ou experimentando retirar o eletrodo:
 [PyNeuro] poorSignalLevel [0-200]: 200
 ```
 Sem loop, sem eletrodo:
-```console
+```ini
 [PyNeuro] poorSignalLevel [0-200]: 200
 [PyNeuro] poorSignalLevel [0-200]: 200
 [PyNeuro] poorSignalLevel [0-200]: 200
 ```
 Conexão encerrada pelo usuário através do TGC:
-```console
+```ini
 [PyNeuro] Stop Packet Parser
 ```
 Observou-se que:
@@ -97,7 +98,7 @@ Observou-se que:
    if status and status != "scanning"
 ```
 O teste a seguir realmente sinalizou pelo menos uma quase-equivalência, a respeito do poorSignalLevel:
-```
+```ini
 [PyNeuro] status: scanning
 [PyNeuro] Fitting Device..
 Att:  30   pLevel:   0   Med:  30

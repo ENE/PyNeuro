@@ -46,9 +46,9 @@ class PyNeuro:
 
     status_def = OrderedDict()
     status_def[MWM2_Status.CONNECTED] = MWM2_Status("Conectado! Sinal de qualidade ótima","icons/connected_v1.png")
-    status_def [MWM2_Status.FITTING1] = MWM2_Status("Sintonizando headset... (fase 1 de 3)","icons/connecting1_v1.png")
-    status_def [MWM2_Status.FITTING2] = MWM2_Status("Sintonizando headset... (fase 2 de 3)","icons/connecting2_v1.png")
-    status_def [MWM2_Status.FITTING3] = MWM2_Status("Sintonizando headset... (fase 3 de 3)","icons/connecting3_v1.png")
+    status_def [MWM2_Status.FITTING1] = MWM2_Status("Buscando o headset... (fase 1 de 3)","icons/connecting1_v1.png")
+    status_def [MWM2_Status.FITTING2] = MWM2_Status("Aguardando dados de EEG... (fase 2 de 3)","icons/connecting2_v1.png")
+    status_def [MWM2_Status.FITTING3] = MWM2_Status("Conexão ainda deve melhorar (fase 3 de 3)","icons/connecting3_v1.png")
     status_def [MWM2_Status.NOSIGNAL] = MWM2_Status("Desconectado, sem qualquer sinal","icons/nosignal_v1.png")
 
     '''TODO translation support
@@ -57,6 +57,37 @@ class PyNeuro:
     [PyNeuro] Fitting Device..
     [PyNeuro] Successfully Connected ..
     [PyNeuro] Connection lost, trying to reconnect..
+
+    The output above "was" from Zach Wang's standard with 4 statuses:
+
+        NotConnected
+        scanning
+        fitting
+        connected
+        
+    These prints exists yet, but our parser implements the Neurosky's
+    Applications Standards now, which has 5 statuses:
+
+        nosignal
+        fitting1
+        fitting2
+        fitting3
+        connected
+
+    (see MWM2_Status class at beginning of file)
+
+    When parsing JSON, the "scanning" status seems to be the only relevant
+    value returned by server (no mentions at ThinkGearSocketProtocol.pdf).
+
+    From Zach Wang's logic, we still make:
+    
+        scanning as fitting1
+        fitting as fitting2
+    
+    Then we started to consider the poorSignalLevel to define fitting3 or
+    to have a more accurate determination of "fitting" (1, 2 or 3) and
+    finally of each status in our tracking of meanings that are Neurosky's
+    Applications Standards based.
     '''
 
     status_def_at = list(status_def.values())
@@ -69,13 +100,12 @@ class PyNeuro:
     Or by an ordered index:
 
         print(PyNeuro.status_at[1])  # 0-4 (the 5 values)
-
     '''
 
     __attention = 0
     __meditation = 0
     __blinkStrength = 0
-    __status = "NotConnected"
+    __status = MWM2_Status.NOSIGNAL
 
     __delta = 0
     __theta = 0
@@ -107,10 +137,13 @@ class PyNeuro:
     __highGamma__callbacks = []
 
     '''Changing status callbacks'''
-    __connect__callbacks = []
-    __disconnect__callbacks = []
-    #TODO? scanning
-    #TODO? fitting
+    __status_callbacks = {
+        MWM2_Status.CONNECTED: [],
+        MWM2_Status.FITTING1: [],
+        MWM2_Status.FITTING2: [],
+        MWM2_Status.FITTING3: [],
+        MWM2_Status.NOSIGNAL: []
+    }
 
     callBacksDictionary = {}  # keep a track of all callbacks
 
@@ -171,19 +204,27 @@ class PyNeuro:
                         data = json.loads(raw_str)
                         if "status" in data.keys():
                             #print("[PyNeuro] status:", data["status"])
-                            if self.__status != data["status"]:
-                                self.__status = data["status"]
-                                if data["status"] == "scanning":
+                            if self.status != data["status"]: # TGSP's it!
+                                if self.status == MWM2_Status.FITTING1:
+                                    pass
+                                elif data["status"] == "scanning": # only relevant from TGSP 
+                                    if self.status != MWM2_Status.FITTING1:
+                                        self.status = MWM2_Status.FITTING1
                                     print("[PyNeuro] Scanning device..")
-                                else:
-                                    print("[PyNeuro] Connection lost, trying to reconnect..")
+                                else:  # "notscanning" - TGSP's it!
+                                    #print('"nosignal" no TGSP é igual a "%s"' % (data["status"]))
+                                    if self.status != MWM2_Status.NOSIGNAL:
+                                        self.status = MWM2_Status.NOSIGNAL                                        
+                                        print("[PyNeuro] Connection lost, trying to reconnect..")
+                                        '''seems that the headset (once found) is not lost and so it
+                                        backs from fitting2 stage, without the TGSP's value "notscanning" '''
                         else:
                             if "eSense" in data.keys():
                                 #print("[PyNeuro] poorSignalLevel [0-200]:", data["poorSignalLevel"])
                                 #print(data["eegPower"])
                                 if data["eSense"]["attention"] + data["eSense"]["meditation"] == 0:
-                                    if self.__status != "fitting":
-                                        self.__status = "fitting"
+                                    if self.status != MWM2_Status.FITTING2: # the Zach's "fitting"
+                                        self.status = MWM2_Status.FITTING2
                                         print("[PyNeuro] Fitting Device..")
 
                                 else:
@@ -192,11 +233,12 @@ class PyNeuro:
                                     #plevel = data["poorSignalLevel"]
                                     #print("Att: %3d   pLevel: %3d   Med: %3d" % (att, plevel, med))
 
-                                    if self.__status != "connected":
-                                        self.__status = "connected"
-                                        for callback in self.__connect__callbacks:
-                                            callback()
+                                    if self.status != MWM2_Status.CONNECTED:
+                                        self.status = MWM2_Status.CONNECTED
                                         print("[PyNeuro] Successfully Connected ..")
+                                    
+                                    self.__consider_signalQuality(data["poorSignalLevel"])
+
                                     self.attention = data["eSense"]["attention"]
                                     self.meditation = data["eSense"]["meditation"]
                                     self.theta = data['eegPower']['theta']
@@ -217,13 +259,10 @@ class PyNeuro:
         except:
             print("[PyNeuro] Stop Packet Parser")
 
-    def set_connect_callback(self, callback):
-        """
-        Set callback function on connect
-        :param callback: function()
-        """
-
-        self.__connect__callbacks.append(callback)
+    def set_highlevel_status_callback(self, status, callback):
+        if status not in self.status_def.keys():
+            raise ValueError("this is not one of the high level statuses")
+        self.__status_callbacks[status].append(callback)
 
     def set_attention_callback(self, callback):
         """
@@ -431,3 +470,38 @@ class PyNeuro:
     def status(self):
         """Get status"""
         return self.__status
+
+    @status.setter
+    def status(self, value):
+        self.__status = value
+        self.__callbacks_for_status(value)
+
+    # executes the function by forcing from parsing, with no setting
+    def __callbacks_for_status(self, status):
+        for callback in self.__status_callbacks[status]:
+            callback()
+    
+    '''candidate to be deprecated'''
+    def isfitting(self):  # unsed; equivalent to Zach Wang's logic?
+        if self.status == MWM2_Status.FITTING1:
+            return True
+        if self.status == MWM2_Status.FITTING2:
+            return True
+        if self.status == MWM2_Status.FITTING3:
+            return True
+        return False
+    
+    def __consider_signalQuality(self, poorSignalLevel): # is connected  
+        if poorSignalLevel < 50:  # down to 0
+            if self.status != MWM2_Status.CONNECTED:
+                self.status = MWM2_Status.CONNECTED
+                print("[PyNeuro] Conectado com pLevel =", poorSignalLevel)
+        elif poorSignalLevel < 100:  # down to 50
+            if self.status != MWM2_Status.FITTING3:
+                self.status = MWM2_Status.FITTING3
+                print("[PyNeuro] Ajustando (fase 3 de 3) com pLevel =", poorSignalLevel)
+        else:  # down to 100
+            if self.status != MWM2_Status.FITTING2:
+                print("[PyNeuro] Ajustando (fase 2 de 3) com pLevel =", poorSignalLevel)
+                self.status = MWM2_Status.FITTING2
+            '''looks like debugging hasn't reached this level'''
